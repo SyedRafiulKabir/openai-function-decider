@@ -11,27 +11,32 @@ const app = express();
 app.use(express.json());
 
 app.post('/decide-function', async (req, res) => {
-  const { prompt, functionNames } = req.body;
+  const { userprompt } = req.body
+  let functionNames = ['getTime', 'getWeather', 'getNews', 'getJoke', 'getQuote'];
 
-  if (!prompt || !Array.isArray(functionNames) || functionNames.length === 0) {
+  if (!userprompt || !Array.isArray(functionNames) || functionNames.length === 0) {
     return res.status(400).send('Invalid request body');
   }
 
   try {
-    // Prepare the OpenAI prompt
-    const openaiPrompt = `
-      Based on the following prompt: "${prompt}", choose the most appropriate function from the list below:
-      ${functionNames.join(', ')}.
-      Respond with the name of the function that should be triggered.
-    `;
+    // Prepare the messages for OpenAI chat completion
+    const messages = [
+      {
+        role: 'system',
+        content: 'You are an assistant that decides which function to call based on the user prompt.'
+      },
+      {
+        role: 'user',
+        content: `Based on the following prompt: "${userprompt}", choose the most appropriate function from the list below: ${functionNames.join(', ')}. Respond with the only name and description of the function that should be triggered.`
+      }
+    ];
 
-    const response = await openai.completions.create({
+    const response = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
-      prompt: openaiPrompt,
-      
+      messages: messages,
     });
-
-    const chosenFunction = response.data.choices[0].text.trim();
+    console.log(response.choices[0].message.content.trim());
+    const chosenFunction = response.choices[0].message.content.trim();
     res.json({ function: chosenFunction });
   } catch (error) {
     console.error('Error with OpenAI API:', error);
@@ -41,5 +46,5 @@ app.post('/decide-function', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`Server is running on http://localhost:${PORT}`);
 });
